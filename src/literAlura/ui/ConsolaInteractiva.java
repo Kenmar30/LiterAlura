@@ -3,25 +3,30 @@ package literAlura.ui;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import literAlura.LocalDateTimeAdapter;
+import literAlura.model.Autor;
 import literAlura.model.Libro;
 import literAlura.model.ResultadoBusqueda;
 import literAlura.repository.LibroRepository;
 import literAlura.service.APIClient;
+import literAlura.LocalDateAdapter;
+
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Scanner;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.time.LocalDate;
+
 
 public class ConsolaInteractiva {
     private final Scanner scanner = new Scanner(System.in);
     private final APIClient apiClient = new APIClient();
     private final Gson gson = new GsonBuilder()
             .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+            .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
             .create();
+
     private final List<Libro> librosGuardados = new ArrayList<>();
     private final LibroRepository libroRepo = new LibroRepository();
 
@@ -36,9 +41,10 @@ public class ConsolaInteractiva {
             System.out.println("4. Ver libros por idioma");
             System.out.println("5. Ver estadísticas");
             System.out.println("6. Eliminar libro guardado");
-            System.out.println("7. Salir");
+            System.out.println("7. 📜 Listar autores vivos en un año determinado");
+            System.out.println("8. Salir");
 
-            System.out.print("📌 Elige una opción del 1 al 7: ");
+            System.out.print("📌 Elige una opción del 1 al 8: ");
 
             try {
                 opcion = Integer.parseInt(scanner.nextLine());
@@ -54,12 +60,16 @@ public class ConsolaInteractiva {
                 case 4 -> verLibrosPorIdioma();
                 case 5 -> mostrarEstadisticas();
                 case 6 -> eliminarLibro();
-                case 7 ->
+                case 7 -> {
+                    listarAutoresVivos();
+                    break;
+                }
+                case 8 ->
                         System.out.println("👋 ¡Gracias por explorar con LiterAlura! Vuelve pronto por más lecturas inspiradoras.");
                 default -> System.out.println("❌ Opción inválida. Intenta de nuevo.");
             }
 
-        } while (opcion != 7);
+        } while (opcion != 8);
 
     }
 
@@ -258,6 +268,27 @@ public class ConsolaInteractiva {
         }
     }
 
+    private void listarAutoresVivos() {
+        System.out.print("Ingrese un año (ej. 1900): ");
+        int anio = scanner.nextInt();
+        scanner.nextLine(); // limpiar buffer
+
+        List<Libro> libros = libroRepo.listarLibros();
+
+        Set<String> autoresVivos = libros.stream()
+                .flatMap(libro -> libro.getAuthors().stream())
+                .filter(autor -> autor.getBirthYear() != null && autor.getBirthYear() <= anio)
+                .filter(autor -> autor.getDeathYear() == null || autor.getDeathYear() >= anio)
+                .map(Autor::toString)
+                .collect(Collectors.toCollection(TreeSet::new)); // evita duplicados y ordena
+
+        if (autoresVivos.isEmpty()) {
+            System.out.println("😢 No se encontraron autores vivos en el año " + anio);
+        } else {
+            System.out.println("\n📜 Autores vivos en el año " + anio + ":");
+            autoresVivos.forEach(nombre -> System.out.println(" - " + nombre));
+        }
+    }
 
 }
 
